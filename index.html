@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-mode="static">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<title>Insider Ledger</title>
+<script>
+  try { const t = localStorage.getItem("iw-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+</script>
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="frame">
+  <header class="masthead">
+    <h1 class="wordmark">Insider Ledger</h1>
+    <p class="status"><span id="status-line">Loading…</span> <span id="run-note" class="run-note" role="status" hidden></span></p>
+    <div id="theme-switch" class="seg desktop-only" role="group" aria-label="Theme">
+      <button type="button" value="auto">Auto</button><button type="button" value="light">Light</button><button type="button" value="dark">Dark</button>
+    </div>
+    <button type="button" id="edit-rules" class="link-btn edit-rules local-only">Edit rules</button>
+    <button type="button" id="theme-cycle" class="btn phone-only theme-cycle">Auto</button>
+    <button type="button" id="add-phone" class="btn phone-only add-phone" aria-label="Add company">+</button>
+  </header>
+
+  <div class="filters" id="filters">
+    <div class="toolbar">
+      <div id="scope" class="seg scope" role="group" aria-label="Scope">
+        <button type="button" value="all">All tracked</button><button type="button" value="watch">Watchlist <span id="watch-count" class="num">0</span></button>
+      </div>
+      <div id="side" class="seg side" role="group" aria-label="Buys or sells">
+        <button type="button" value="both">Both</button><button type="button" value="buy">Buys <span id="buy-count" class="num">0</span></button><button type="button" value="sell">Sells <span id="sell-count" class="num">0</span></button>
+      </div>
+      <div id="plan" class="seg plan" role="group" aria-label="Planned under a 10b5-1 trading plan" title="Planned trades were scheduled in advance under a Rule 10b5-1 plan">
+        <button type="button" value="all">Any plan</button><button type="button" value="unplanned">Unplanned <span id="unplanned-count" class="num">0</span></button><button type="button" value="planned">Planned <span id="planned-count" class="num">0</span></button>
+      </div>
+      <ul class="legend" aria-label="Legend">
+        <li><span class="key buy"></span>Buy</li><li><span class="key sell"></span>Sell</li><li><span class="key planned"></span>Planned (10b5-1)</li>
+      </ul>
+      <button type="button" id="size-switch" class="switch size" role="switch" aria-checked="false"><span class="switch-track" aria-hidden="true"></span>Size by % of position</button>
+      <button type="button" id="add-company" class="btn add-company"><span aria-hidden="true">+</span> Add company</button>
+    </div>
+
+    <div class="controls">
+      <label class="sort">Sort by
+        <select id="sort">
+          <option value="flags">Most flags</option>
+          <option value="latest">Latest filing</option>
+          <option value="value">Largest $ value</option>
+          <option value="pct">Largest % of position</option>
+          <option value="sigma">Furthest from own trend (σ)</option>
+        </select>
+      </label>
+      <div class="sigma" role="group" aria-label="Distance from trend filter">
+        <input type="checkbox" id="sigma-on" aria-label="Only show trades far from their insider's trend">
+        <label for="sigma-on">Only ≥</label>
+        <input type="number" id="sigma-m" class="num" min="0.5" step="0.5" value="2" aria-label="Sigma">
+        <span>σ</span>
+        <select id="sigma-mode" aria-label="Direction">
+          <option value="larger">larger than</option>
+          <option value="either">either side of</option>
+          <option value="smaller">smaller than</option>
+        </select>
+        <span><span class="desktop-only">own </span>trend</span>
+      </div>
+      <span class="kbd-hint" tabindex="0" title="In the lanes, Up and Down move between companies; Left and Right step through the selected company's flags in date order.">↑↓ ←→</span>
+      <button type="button" id="filters-toggle" class="btn phone-only filters-toggle" aria-expanded="false" aria-controls="filters">Filters <span id="filters-active" class="num"></span></button>
+      <div id="range" class="seg range" role="group" aria-label="Date range">
+        <button type="button" value="30"><span class="desktop-only">30 days</span><span class="phone-only">30d</span></button><button type="button" value="90"><span class="desktop-only">90 days</span><span class="phone-only">90d</span></button><button type="button" value="365"><span class="desktop-only">1 year</span><span class="phone-only">1y</span></button>
+      </div>
+    </div>
+  </div>
+
+  <section class="timeline" aria-label="Flags by company over time">
+    <div class="strip-row"><span class="strip-label" id="strip-label">Flags per day</span><div id="strip" class="strip" aria-hidden="true"></div></div>
+    <div class="axis-row" aria-hidden="true"><span></span><div id="axis" class="axis"></div></div>
+    <div id="lanes" class="lanes"></div>
+  </section>
+  <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal" tabindex="0"
+    aria-label="Resize the company lanes and the flag list" title="Drag, or use the arrow keys, to resize. Double-click to reset."></div>
+
+  <section id="detail" class="detail" aria-label="Flags for the selected company"></section>
+  <footer class="site-foot static-only">Data from SEC Form 4 filings. Not investment advice.</footer>
+</div>
+
+<dialog id="rules-dialog" class="dialog local-only" aria-labelledby="rules-title">
+  <form id="rules-form" method="dialog">
+    <h2 id="rules-title">Rules</h2>
+    <p class="dialog-note">Every open-market buy is flagged. A sell is flagged when either rule below fires; one sale can fire both.</p>
+    <label class="rule-field">Sell larger than <input class="num" name="pct_threshold" type="number" min="0" step="any" inputmode="decimal"> % of the insider’s position</label>
+    <label class="rule-field">Sell larger than <input class="num" name="multiple" type="number" min="0" step="any" inputmode="decimal"> × their median sale</label>
+    <label class="rule-field">…when they have at least <input class="num" name="min_prior_sales" type="number" min="1" step="1" inputmode="numeric"> prior sales</label>
+    <label class="rule-field">…within the last <input class="num" name="lookback_days" type="number" min="1" step="1" inputmode="numeric"> days</label>
+    <p id="rules-error" class="form-error" role="alert"></p>
+    <div class="dialog-actions">
+      <button type="submit" value="cancel" class="btn">Cancel</button>
+      <button type="submit" value="save" id="rules-save" class="btn primary">Save and re-run rules</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="add-dialog" class="dialog add-dialog" aria-labelledby="add-title">
+  <header class="dialog-head"><h2 id="add-title"><span class="local-only">Add a company</span><span class="static-only">Find a stock</span></h2><button type="button" id="add-close" class="icon-btn" aria-label="Close">×</button></header>
+  <input type="search" id="add-q" placeholder="Ticker or company name" aria-label="Search by ticker or company name" autocomplete="off" spellcheck="false">
+  <ul id="add-results" class="add-results" aria-live="polite"></ul>
+  <label class="check local-only"><input type="checkbox" id="add-watch" checked> Also add to watchlist</label>
+  <p class="dialog-note static-only">Searches every company that files with the SEC. Starred companies are kept in this browser.</p>
+  <p class="dialog-note local-only">Any company that files Form 4 with the SEC can be tracked. A new company’s filings for the lookback period are pulled on the next re-run.</p>
+</dialog>
+</body>
+</html>

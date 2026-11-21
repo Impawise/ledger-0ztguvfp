@@ -1,0 +1,1 @@
+{"through":"2026-11-18","companies":500,"filings":72616,"rules":{"pct_threshold":10.0,"multiple":2.0,"min_prior_sales":2,"lookback_days":730,"trend_pct":100.0,"trend_sigma":2.0},"default_watchlist":["AAPL","ABBV","AMD","AMZN","AVGO","BRK-B","COST","CSCO","CVX","GOOG","JNJ","JPM","KO","LLY","MA","META","MSFT","MU","NVDA","PG","PLTR","TSLA","V","WMT","XOM"]}
